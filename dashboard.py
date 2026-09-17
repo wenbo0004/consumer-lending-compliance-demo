@@ -8,7 +8,8 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "output"
 st.set_page_config(page_title="Compliance Monitoring Demo", layout="wide")
 st.title("Consumer Lending Compliance Monitoring")
-st.caption("Synthetic data and fictional rules · As of 2026-06-30 · Potential findings require human review")
+st.caption("Synthetic data | Fictional monitoring rules | As of 2026-06-30")
+st.info("Review flow: eligible population -> DQ review -> potential control exceptions.")
 
 if not (OUT / "exceptions.csv").exists():
     st.info("Run python3 scripts/run_monitor.py first to generate dashboard data.")
@@ -22,9 +23,9 @@ validation = pd.read_csv(OUT / "validation.csv")
 policy = review[review["control"].isin(["APR", "NOTICE"])]
 
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("Monitored records", len(apr) + len(notice), help="Evaluated APR loan rows plus notice application rows")
+k1.metric("Monitored population", len(apr) + len(notice), help="Evaluated APR loan rows plus notice application rows")
 k2.metric("Controls executed", 3, help="APR, notice, and data quality")
-k3.metric("Potential control exceptions", len(policy))
+k3.metric("Potential exceptions", len(policy))
 k4.metric("DQ issues", len(issues))
 st.caption(f"Validation: {int(validation['passed'].sum())}/{len(validation)} checks passed. "
            "DQ records are investigated separately from potential control exceptions.")
@@ -33,13 +34,14 @@ left, right = st.columns(2)
 with left:
     st.subheader("Exceptions by control")
     counts = review.groupby("control").size().reindex(["APR", "NOTICE", "DQ"], fill_value=0)
-    st.bar_chart(counts)
+    st.bar_chart(counts, color="#2B6F75")
 with right:
     st.subheader("Potential exception trend")
     dated = policy.copy()
     dated["event_date"] = pd.to_datetime(dated["event_date"], errors="coerce")
     trend = dated.dropna(subset=["event_date"]).groupby(pd.Grouper(key="event_date", freq="MS")).size()
-    st.bar_chart(trend)
+    trend.index = trend.index.strftime("%b %Y")
+    st.bar_chart(trend, color="#2B6F75")
     st.caption("By source event month; DQ issues have no event date in this demo.")
 
 st.subheader("Exception review queue")
